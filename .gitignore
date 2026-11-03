@@ -1,0 +1,16 @@
+node_modules/
+.next/
+out/
+coverage/
+playwright-report/
+test-results/
+.env*
+!.env.example
+*.tsbuildinfo
+next-env.d.ts
+src/generated/prisma/
+storage/
+
+# Local launch runtimes and diagnostics
+.tools/
+greenstore-launcher.log

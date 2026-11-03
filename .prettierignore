@@ -1,0 +1,6 @@
+node_modules
+.next
+src/generated
+storage
+public/illustrations
+package-lock.json

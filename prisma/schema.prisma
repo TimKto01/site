@@ -1,0 +1,183 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum ProductStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+model Category {
+  id        String   @id @default(cuid())
+  slug      String   @unique
+  name      String
+  caption   String   @default("")
+  image     String   @default("/illustrations/shrub.svg")
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  products  Product[]
+}
+
+model Product {
+  id               String           @id @default(cuid())
+  slug             String           @unique
+  name             String
+  searchName       String
+  sku              String           @unique
+  latin            String           @default("")
+  description      String           @default("")
+  shortDescription String           @default("")
+  status           ProductStatus    @default(DRAFT)
+  isDemo           Boolean          @default(true)
+  isNew            Boolean          @default(false)
+  minPrice         Int              @default(0)
+  shippingAllowed  Boolean          @default(false)
+  shippingNote     String           @default("")
+  categoryId       String
+  category         Category         @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  variants         ProductVariant[]
+  images           ProductImage[]
+  attributes       ProductAttribute[]
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  @@index([status, categoryId, minPrice])
+  @@index([status, createdAt])
+  @@index([searchName])
+}
+
+model ProductVariant {
+  id            String              @id @default(cuid())
+  productId     String
+  product       Product             @relation(fields: [productId], references: [id], onDelete: Restrict)
+  label         String
+  price         Int
+  stock         Int                 @default(0)
+  container     String              @default("")
+  weightGrams   Int                 @default(0)
+  lengthMm      Int                 @default(0)
+  widthMm       Int                 @default(0)
+  heightMm      Int                 @default(0)
+  active        Boolean             @default(true)
+  sortOrder     Int                 @default(0)
+  movements     InventoryMovement[]
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
+
+  @@index([productId, active, sortOrder])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  url       String
+  alt       String  @default("")
+  sortOrder Int     @default(0)
+
+  @@index([productId, sortOrder])
+}
+
+model ProductAttribute {
+  id        String  @id @default(cuid())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  name      String
+  value     String
+  sortOrder Int     @default(0)
+
+  @@index([productId, sortOrder])
+}
+
+model InventoryMovement {
+  id        String         @id @default(cuid())
+  variantId String
+  variant   ProductVariant @relation(fields: [variantId], references: [id], onDelete: Restrict)
+  delta     Int
+  reason    String
+  actorId   String?
+  actor     AdminUser?     @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  createdAt DateTime       @default(now())
+
+  @@index([variantId, createdAt])
+}
+
+model AdminUser {
+  id           String              @id @default(cuid())
+  username     String              @unique
+  passwordHash String
+  active       Boolean             @default(true)
+  sessions     AdminSession[]
+  auditLogs    AuditLog[]
+  movements    InventoryMovement[]
+  assets       UploadAsset[]
+  createdAt    DateTime            @default(now())
+  updatedAt    DateTime            @updatedAt
+}
+
+model AdminSession {
+  id        String    @id @default(cuid())
+  tokenHash String    @unique
+  userId    String
+  user      AdminUser @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+
+  @@index([userId, expiresAt])
+  @@index([expiresAt])
+}
+
+model AuthThrottle {
+  key       String   @id
+  count     Int      @default(0)
+  expiresAt DateTime
+  @@index([expiresAt])
+}
+
+model StoreSetting {
+  id               String @id @default("store")
+  name             String @default("GreenStore")
+  logo             String @default("")
+  heroTitle        String @default("Больше жизни\nв вашем саду.")
+  heroDescription  String @default("Соберите свой зелёный уголок — от первого саженца до сада, в который хочется возвращаться.")
+  storyTitle       String @default("Место для ваших\nзелёных идей.")
+  storyText        String @default("Живая изгородь вдоль дорожки, хвойный акцент у дома или первое цветение на террасе. Начните с того, что вам близко, — и дайте своему саду время.")
+  phone            String @default("")
+  email            String @default("")
+  address          String @default("")
+  hours            String @default("")
+  lowStockThreshold Int   @default(3)
+  updatedAt        DateTime @updatedAt
+}
+
+model AuditLog {
+  id        String     @id @default(cuid())
+  actorId   String?
+  actor     AdminUser? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+  action    String
+  entityId  String
+  summary   String
+  createdAt DateTime   @default(now())
+
+  @@index([createdAt])
+  @@index([entityId, createdAt])
+}
+
+model UploadAsset {
+  id        String    @id @default(cuid())
+  key       String    @unique
+  mime      String
+  bytes     Int
+  width     Int
+  height    Int
+  ownerId   String
+  owner     AdminUser @relation(fields: [ownerId], references: [id], onDelete: Restrict)
+  createdAt DateTime  @default(now())
+}
